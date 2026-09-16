@@ -1,0 +1,17 @@
+INSERT OR IGNORE INTO subjects (name,grade,track,type,capacity,active,sort_order,created_at,updated_at) VALUES
+('Excel','11','Ambos','Electiva',25,1,0,datetime('now'),datetime('now')),
+('Arte I','11','Ambos','Electiva',20,1,0,datetime('now'),datetime('now')),
+('Business','11','Ambos','Electiva',25,1,0,datetime('now'),datetime('now')),
+('Biology','12','Ambos','Electiva',25,1,0,datetime('now'),datetime('now')),
+('Estadística','12','Ambos','Electiva',25,1,1,datetime('now'),datetime('now')),
+('Excel','12','Ambos','Electiva',25,1,2,datetime('now'),datetime('now')),
+('Arte I','12','Ambos','Electiva',20,1,3,datetime('now'),datetime('now')),
+('Psicología','12','Ambos','Electiva',20,1,4,datetime('now'),datetime('now')),
+('Química III','12','Ambos','Electiva',15,1,5,datetime('now'),datetime('now')),
+('Relaciones Internacionales','12','Ambos','Electiva',20,1,6,datetime('now'),datetime('now')),
+('Cálculo Avanzado - Electiva','12','Ambos','Curso avanzado',25,1,7,datetime('now'),datetime('now')),
+('Comparative Literature II Honors','12','Ambos','Curso avanzado',25,1,8,datetime('now'),datetime('now')),
+('Español Avanzado - Electiva','12','Ambos','Curso avanzado',25,1,9,datetime('now'),datetime('now')),
+('Física Avanzada II','12','Ambos','Curso avanzado',25,1,10,datetime('now'),datetime('now')),
+('Química III Avanzado - Electiva','12','Ambos','Curso avanzado',25,1,11,datetime('now'),datetime('now')),
+('Cálculo Avanzado','12','Ambos','Curso avanzado',25,1,12,datetime('now'),datetime('now'));
