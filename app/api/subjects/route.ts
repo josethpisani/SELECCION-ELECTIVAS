@@ -11,10 +11,11 @@ const mapSubject = (row: Record<string, unknown>) => ({
   active: Number(row.active ?? 1) === 1,
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await ensureDatabase();
-    const result = await db.execute('SELECT name,description,grade,track,type,capacity,active FROM subjects WHERE active=1 ORDER BY grade,sort_order,name');
+    const includeInactive = new URL(request.url).searchParams.get('admin') === '1' && isAdminRequest(request);
+    const result = await db.execute(`SELECT name,description,grade,track,type,capacity,active FROM subjects ${includeInactive ? '' : 'WHERE active=1'} ORDER BY grade,sort_order,name`);
     return NextResponse.json(result.rows.map(row => mapSubject(row as Record<string, unknown>)));
   } catch {
     return NextResponse.json({ error: 'No se pudieron consultar las materias.' }, { status: 503 });
