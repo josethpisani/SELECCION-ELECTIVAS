@@ -5,6 +5,11 @@ import { isAdminRequest } from '../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+const defaultRules = {
+  '11': { Ciencias: { requiredElectives: 2, enabled: true }, Humanidades: { requiredElectives: 2, enabled: true } },
+  '12': { Ciencias: { requiredElectives: 2, enabled: true }, Humanidades: { requiredElectives: 2, enabled: true } },
+} as const;
+
 const mapStudent = (row: Record<string, unknown>) => ({
   id: String(row.id), firstName: String(row.first_name), middleName: String(row.middle_name ?? ''), lastName: String(row.last_name), studentId: String(row.student_id), email: String(row.email), phone: String(row.phone ?? ''), grade: String(row.grade), track: String(row.track),
   electives: JSON.parse(String(row.electives_json || '[]')), advanced: JSON.parse(String(row.advanced_json || '[]')), observation: String(row.observation || ''), status: String(row.status), createdAt: String(row.created_at),
@@ -29,6 +34,35 @@ export async function POST(request: NextRequest) {
   try {
     await ensureDatabase();
     const s = await request.json();
+    const adminRequest = isAdminRequest(request);
+
+    // Admin-created records are allowed to be entered manually. Public student
+    // submissions must obey the rules configured in the administrator panel.
+    if (!adminRequest) {
+      const setting = await db.execute({ sql: 'SELECT value FROM app_settings WHERE key=? LIMIT 1', args: ['electiveRules'] });
+      let rules = defaultRules as Record<string, Record<string, { requiredElectives: number; enabled: boolean }>>;
+      try {
+        const stored = setting.rows[0]?.value;
+        if (stored) rules = JSON.parse(String(stored));
+      } catch {
+        rules = defaultRules as Record<string, Record<string, { requiredElectives: number; enabled: boolean }>>;
+      }
+
+      const grade = String(s.grade ?? '');
+      const track = String(s.track ?? '');
+      const rule = rules[grade]?.[track];
+      const electives: string[] = Array.isArray(s.electives) ? s.electives.map((name: unknown) => String(name)) : [];
+      const advanced: string[] = Array.isArray(s.advanced) ? s.advanced.map((name: unknown) => String(name)) : [];
+      if (!rule?.enabled) return NextResponse.json({ error: 'Ese bachillerato no está habilitado para el grado seleccionado.' }, { status: 400 });
+      if (electives.length !== Number(rule.requiredElectives)) return NextResponse.json({ error: `Debes seleccionar exactamente ${rule.requiredElectives} electiva(s).` }, { status: 400 });
+      if (advanced.length > 4) return NextResponse.json({ error: 'Puedes seleccionar como máximo 4 cursos avanzados.' }, { status: 400 });
+
+      const subjects = await db.execute('SELECT name,grade,track,type FROM subjects WHERE active=1');
+      const available = subjects.rows as Array<Record<string, unknown>>;
+      const canChoose = (name: string, type: string) => available.some(subject => String(subject.name) === name && String(subject.grade) === grade && (String(subject.track) === track || String(subject.track) === 'Ambos') && String(subject.type).toLowerCase() === type.toLowerCase());
+      if (electives.some(name => !canChoose(name, 'Electiva'))) return NextResponse.json({ error: 'Una o más electivas no están disponibles para el grado y bachillerato seleccionados.' }, { status: 400 });
+      if (advanced.some(name => !canChoose(name, 'Curso avanzado'))) return NextResponse.json({ error: 'Uno o más cursos avanzados no están disponibles para el grado y bachillerato seleccionados.' }, { status: 400 });
+    }
     const duplicate = await db.execute({ sql: 'SELECT id FROM students WHERE lower(student_id)=lower(?) LIMIT 1', args: [s.studentId] });
     if (duplicate.rows.length) return NextResponse.json({ error: 'Ya existe una selección registrada para este estudiante.' }, { status: 409 });
     const now = new Date().toISOString();
