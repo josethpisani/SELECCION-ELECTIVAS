@@ -11,12 +11,16 @@ export function ensureDatabase() {
       const statements = [
         `CREATE TABLE IF NOT EXISTS students (id TEXT PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL, middle_name TEXT NOT NULL DEFAULT '', student_id TEXT NOT NULL UNIQUE, email TEXT NOT NULL, phone TEXT, grade TEXT NOT NULL, track TEXT NOT NULL, electives_json TEXT NOT NULL DEFAULT '[]', advanced_json TEXT NOT NULL DEFAULT '[]', observation TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'Pendiente', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
         `CREATE TABLE IF NOT EXISTS roster_students (student_id TEXT PRIMARY KEY, first_name TEXT NOT NULL, middle_name TEXT NOT NULL DEFAULT '', last_name TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', grade TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+        `CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL)`,
         `CREATE TABLE IF NOT EXISTS subjects (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, description TEXT, grade TEXT NOT NULL, track TEXT NOT NULL DEFAULT 'Ambos', type TEXT NOT NULL, capacity INTEGER NOT NULL DEFAULT 25, active INTEGER NOT NULL DEFAULT 1, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
         `CREATE INDEX IF NOT EXISTS idx_students_grade ON students(grade)`,
         `CREATE INDEX IF NOT EXISTS idx_roster_grade ON roster_students(grade)`,
         `CREATE INDEX IF NOT EXISTS idx_subjects_grade ON subjects(grade)`,
       ];
       for (const sql of statements) await db.execute(sql);
+      const settingsNow = new Date().toISOString();
+      await db.execute({ sql: 'INSERT OR IGNORE INTO app_settings (key,value,updated_at) VALUES (?,?,?)', args: ['requiredElectives', '2', settingsNow] });
+      await db.execute({ sql: 'INSERT OR IGNORE INTO app_settings (key,value,updated_at) VALUES (?,?,?)', args: ['allowedTracks', JSON.stringify(['Ciencias', 'Humanidades']), settingsNow] });
       const count = await db.execute('SELECT COUNT(*) AS count FROM roster_students');
       if (Number(count.rows[0]?.count ?? 0) === 0) {
         const file = path.join(process.cwd(), 'public', 'data', 'Listas 11 y 12 2027.xlsx');
