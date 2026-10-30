@@ -6,8 +6,8 @@ import { isAdminRequest } from '../../../lib/auth';
 export const dynamic = 'force-dynamic';
 
 const defaultRules = {
-  '11': { Ciencias: { requiredElectives: 2, enabled: true }, Humanidades: { requiredElectives: 2, enabled: true } },
-  '12': { Ciencias: { requiredElectives: 2, enabled: true }, Humanidades: { requiredElectives: 2, enabled: true } },
+  '11': { Ciencias: { requiredElectives: 2, maxAdvanced: 4, enabled: true }, Humanidades: { requiredElectives: 2, maxAdvanced: 4, enabled: true } },
+  '12': { Ciencias: { requiredElectives: 2, maxAdvanced: 4, enabled: true }, Humanidades: { requiredElectives: 2, maxAdvanced: 4, enabled: true } },
 } as const;
 
 const mapStudent = (row: Record<string, unknown>) => ({
@@ -40,12 +40,12 @@ export async function POST(request: NextRequest) {
     // submissions must obey the rules configured in the administrator panel.
     if (!adminRequest) {
       const setting = await db.execute({ sql: 'SELECT value FROM app_settings WHERE key=? LIMIT 1', args: ['electiveRules'] });
-      let rules = defaultRules as Record<string, Record<string, { requiredElectives: number; enabled: boolean }>>;
+      let rules = defaultRules as Record<string, Record<string, { requiredElectives: number; maxAdvanced: number; enabled: boolean }>>;
       try {
         const stored = setting.rows[0]?.value;
         if (stored) rules = JSON.parse(String(stored));
       } catch {
-        rules = defaultRules as Record<string, Record<string, { requiredElectives: number; enabled: boolean }>>;
+        rules = defaultRules as Record<string, Record<string, { requiredElectives: number; maxAdvanced: number; enabled: boolean }>>;
       }
 
       const grade = String(s.grade ?? '');
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       const advanced: string[] = Array.isArray(s.advanced) ? s.advanced.map((name: unknown) => String(name)) : [];
       if (!rule?.enabled) return NextResponse.json({ error: 'Ese bachillerato no está habilitado para el grado seleccionado.' }, { status: 400 });
       if (electives.length !== Number(rule.requiredElectives)) return NextResponse.json({ error: `Debes seleccionar exactamente ${rule.requiredElectives} electiva(s).` }, { status: 400 });
-      if (advanced.length > 4) return NextResponse.json({ error: 'Puedes seleccionar como máximo 4 cursos avanzados.' }, { status: 400 });
+      if (advanced.length > Number(rule.maxAdvanced ?? 4)) return NextResponse.json({ error: `Puedes seleccionar como máximo ${rule.maxAdvanced ?? 4} curso(s) avanzado(s).` }, { status: 400 });
 
       const subjects = await db.execute('SELECT name,grade,track,type FROM subjects WHERE active=1');
       const available = subjects.rows as Array<Record<string, unknown>>;
