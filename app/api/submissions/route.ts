@@ -36,6 +36,11 @@ export async function POST(request: NextRequest) {
     const s = await request.json();
     const adminRequest = isAdminRequest(request);
 
+    if (!adminRequest) {
+      const formStatus = await db.execute({ sql: 'SELECT value FROM app_settings WHERE key=? LIMIT 1', args: ['studentFormEnabled'] });
+      if (String(formStatus.rows[0]?.value ?? 'true') === 'false') return NextResponse.json({ error: 'El formulario estudiante está cerrado temporalmente.' }, { status: 403 });
+    }
+
     // Admin-created records are allowed to be entered manually. Public student
     // submissions must obey the rules configured in the administrator panel.
     if (!adminRequest) {
